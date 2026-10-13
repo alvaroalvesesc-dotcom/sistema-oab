@@ -642,7 +642,7 @@ function buildPlan(){
     if(tags.includes('rs')){
       const ds=[...new Set(weekTopics.map(t=>TMAP[t].disc))];
       tasks.push({id:`${date}|rs`,type:'revisao',label:'Revisão semanal',detail:ds.length?'Assuntos da semana: '+ds.map(curto).join(', '):'Revise os assuntos estudados até aqui',mins:90});
-      tasks.push({id:`${date}|rsq`,type:'questoes',label:'Questões dos assuntos da semana',detail:'30 questões misturando as disciplinas da semana',mins:60});
+      tasks.push({id:`${date}|rsq`,type:'questoes',label:'Questões dos assuntos da semana',detail:'50 questões misturando todos os conteúdos estudados na semana',mins:100,topics:[...new Set(weekTopics)]});
     }
     if(tags.includes('noc')){
       pickDiscs(2).forEach(d=>tasks.push({id:`${date}|noc|${d}`,type:'nocaute',label:`Revisão nocaute: ${curto(d)}`,detail:'Lei seca, resumos e os pontos que mais caem',mins:60}));
@@ -944,7 +944,7 @@ function vInicio(){
 
 function taskRow(t){const aula=t.type==='teoria'?aulasDoTopico(t.topic).find(a=>a.tipo!=='pdf'):null;
   return `<label class="task ${isDone(t.id)?'done':''}"><input type="checkbox" data-task="${esc(t.id)}" ${isDone(t.id)?'checked':''}>
-  <span style="min-width:0"><span class="t">${esc(t.label)}</span><span class="d"><span class="ty ty-${t.type}">${CHIP[t.type]}</span><span>${esc(t.detail)}</span>${aula?`<button type="button" class="link" data-go="aula" data-p="${esc(aula.id)}">Assistir aula</button>`:''}</span></span>
+  <span style="min-width:0"><span class="t">${esc(t.label)}</span><span class="d"><span class="ty ty-${t.type}">${CHIP[t.type]}</span><span>${esc(t.detail)}</span>${aula?`<button type="button" class="link" data-go="aula" data-p="${esc(aula.id)}">Assistir aula</button>`:''}${t.topics&&t.topics.length?`<button type="button" class="btn sm primary" data-q="rev" data-id="0" data-t="${esc(t.id)}">${ic('arrowR')}Fazer as 50 questões${revInfo(t.id)}</button>`:''}</span></span>
   <span class="mins">${fmtMin(t.mins)}</span></label>`}
 
 const STEP_INFO={
@@ -1094,7 +1094,7 @@ function vCrono(){
     if(day.kind==='off')return `<div class="${cls}">${head}<span class="muted small">Dia ${day.n}</span>${tagPills(day.tags)}<span class="muted small">Descanso</span></div>`;
     const st=dayStats(day);
     return `<div class="${cls}">${head}<span class="muted small" style="font-weight:700">Dia ${day.n} · ${st.done}/${st.total}</span>${day.tags.length?`<div class="row" style="gap:4px">${tagPills(day.tags)}</div>`:''}
-    ${day.tasks.map(x=>`<label class="mini ${isDone(x.id)?'done':''}"><input type="checkbox" data-task="${esc(x.id)}" ${isDone(x.id)?'checked':''}><span><span class="k">${x.type==='teoria'?esc(curto(TMAP[x.topic].disc)):CHIP[x.type]}</span>${esc(x.label)}${x.type==='teoria'?`<br><button type="button" class="link" style="font-size:.72rem" data-go="meta" data-p="${day.n}" data-scroll="tema-${x.topic}">Ver meta do dia${ic('chevR')}</button>`:''}</span></label>`).join('')}
+    ${day.tasks.map(x=>`<label class="mini ${isDone(x.id)?'done':''}"><input type="checkbox" data-task="${esc(x.id)}" ${isDone(x.id)?'checked':''}><span><span class="k">${x.type==='teoria'?esc(curto(TMAP[x.topic].disc)):CHIP[x.type]}</span>${esc(x.label)}${x.type==='teoria'?`<br><button type="button" class="link" style="font-size:.72rem" data-go="meta" data-p="${day.n}" data-scroll="tema-${x.topic}">Ver meta do dia${ic('chevR')}</button>`:''}${x.topics&&x.topics.length?`<br><button type="button" class="link" style="font-size:.72rem" data-q="rev" data-id="0" data-t="${esc(x.id)}">Fazer as 50 questões${ic('chevR')}</button>`:''}</span></label>`).join('')}
     <button class="link" style="margin-top:auto" data-go="meta" data-p="${day.n}">Ver meta do dia${ic('chevR')}</button></div>`}).join('');
   const end=addDays(mon,6);const ts=cronoTopics();
   const thisMon=ymd(addDays(t,-((t.getDay()+6)%7)));const minOff=-Math.floor(daysBetween(CRONO_INICIO,thisMon)/7),maxOff=Math.floor(daysBetween(thisMon,P.last)/7);
@@ -1192,7 +1192,7 @@ const QWHY=[['DL','Desconhecimento da lei'],['DD','Desconhecimento da doutrina']
 const QLET='ABCDE';
 const QB={db:null,Q:[],loading:null,list:[],pos:0};
 S.qs={ans:{},ok:{},elim:{},why:{},at:{}};
-S.qf={temas:null,day:null,touched:false,tema:null,d:'',c:'',status:'all',order:'book',term:'',seed:1,font:0,per:1};
+S.qf={rev:null,temas:null,day:null,touched:false,tema:null,d:'',c:'',status:'all',order:'book',term:'',seed:1,font:0,per:1};
 async function qInflate(b64){
   const bin=atob(b64.trim());const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
   if('DecompressionStream' in window){try{const ds=new Blob([u]).stream().pipeThrough(new DecompressionStream('gzip'));return await new Response(ds).text()}catch(e){}}
@@ -1216,6 +1216,7 @@ function qStatus(q){const a=S.qs.ans[q.id];if(a===undefined)return 'new';return 
 function qRng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 function qBuild(keepId){
   const f=S.qf,DB=QB.db,term=qFold(f.term.trim());
+  if(f.rev){const ids=(S.qs.rev||{})[f.rev]||[];QB.list=ids.map(i=>QB.Q[i-1]).filter(q=>q&&(f.status==='all'||qStatus(q)===f.status));const k=keepId!=null?QB.list.findIndex(q=>q.id===keepId):-1;QB.pos=k>=0?Math.floor(k/f.per)*f.per:0;return}
   QB.list=QB.Q.filter(q=>{
     if(f.tema&&!qMatchTema(q,f.tema))return false;
     if(!f.tema&&f.temas&&!f.temas.some(t=>qMatchTema(q,t)))return false;
@@ -1255,11 +1256,17 @@ function vQuestoes(){
   const head=UI.header('questoes');
   if(!QB.db){qLoad().then(()=>{qBuild(S.qf.cur);if(S.route==='questoes')rerender()}).catch(()=>{if(S.route==='questoes'){$('#main').innerHTML=head+`<section class="card">${UI.empty({title:'Não foi possível abrir o banco de questões',text:'Atualize a página. Se persistir, use um navegador atualizado (Chrome, Edge, Safari ou Firefox).'})}</section>`}});
     return `${head}<section class="card"><b>Carregando 3.839 questões comentadas…</b>${UI.skeleton(5)}</section>`}
-  if(!S.qf.touched){const d=qStudyDay();if(d){qSetDay(d,null)}S.qf.touched=true}
+  if(!S.qf.touched&&!S.qf.rev){const d=qStudyDay();if(d){qSetDay(d,null)}S.qf.touched=true}
   if(!QB.built){qBuild(S.qf.cur);QB.built=true}
   const f=S.qf,DB=QB.db,N=QB.list.length,st=qStats();
   let ok=0,er=0;QB.list.forEach(q=>{const s=qStatus(q);if(s==='ok')ok++;else if(s==='err')er++});
-  const temaBox=(f.tema||f.temas)?(()=>{const day=f.day?S.plan.days[f.day-1]:null;const list=f.temas||[f.tema];const resp=ok+er;
+  const revBox=f.rev?(()=>{const ft=findTask(f.rev);const ids=(S.qs.rev||{})[f.rev]||[];const resp=ids.filter(i=>S.qs.ans[i]!==undefined);const o=resp.filter(i=>S.qs.ok[i]).length;const t=ft.t;
+    const temas=t.topics.map(x=>`${esc(curto(TMAP[x].disc))}: ${esc(TMAP[x].nome)}`);const done=isDone(t.id);
+    return `<section class="card" style="border-color:var(--primary);gap:10px"><div class="card-h"><div class="ttl"><span class="eyebrow">Revisão semanal · Dia ${ft.d.n} · ${fmtD(ft.d.date)}</span><h2>${ids.length} questões misturando os conteúdos da semana</h2><span class="muted small">${resp.length} de ${ids.length} respondidas · ${resp.length?Math.round(o/resp.length*100)+'% de acertos ('+o+' certas, '+(resp.length-o)+' erradas)':'nenhuma respondida ainda'}</span></div>
+     <div class="row">${done?'<span class="pill ok">Revisão concluída</span>':`<button class="btn primary sm" data-q="revdone" ${resp.length?'':'disabled'}>${ic('check')}Concluir revisão</button>`}<button class="btn sm" data-q="untema">Sair da revisão</button><button class="btn sm ghost" data-go="meta" data-p="${ft.d.n}">${ic('chevL')}Voltar à meta</button></div></div>
+     <div class="qbar"><i class="b-ok" style="width:${ids.length?o*100/ids.length:0}%"></i><i class="b-err" style="width:${ids.length?(resp.length-o)*100/ids.length:0}%"></i></div>
+     <details><summary class="muted small" style="cursor:pointer">${temas.length} conteúdos da semana</summary><div class="row" style="gap:6px;margin-top:8px">${temas.map(x=>`<span class="pill">${x}</span>`).join('')}</div></details></section>`})():'';
+  const temaBox=!f.rev&&(f.tema||f.temas)?(()=>{const day=f.day?S.plan.days[f.day-1]:null;const list=f.temas||[f.tema];const resp=ok+er;
     const isToday=day&&day.date===todayStr();const lbl=day?(isToday?`Conteúdo de hoje · Dia ${day.n}`:day.date<todayStr()?`Conteúdo do Dia ${day.n} · ${fmtD(day.date)}`:`Conteúdo do Dia ${day.n} · ${fmtD(day.date)} (adiantando)`):'Questões do tema';
     const titulo=f.tema?`${esc(curto(TMAP[f.tema].disc))} · ${esc(TMAP[f.tema].nome)}`:[...new Set(list.map(t=>TMAP[t].disc))].map(dd=>esc(curto(dd))).join(' · ');
     const chip=(k,label,on)=>`<button class="chip-f" data-q="ctx" data-t="${k}" aria-pressed="${on}">${label}</button>`;
@@ -1267,10 +1274,10 @@ function vQuestoes(){
     const p=f.tema?progressoTema(f.tema).passos:null;
     return `<section class="card" style="border-color:var(--primary);gap:10px"><div class="card-h"><div class="ttl"><span class="eyebrow">${lbl}</span><h2>${titulo}</h2><span class="muted small">Filtro automático pelo que está sendo estudado · ${resp} de ${N} respondidas · ${resp?Math.round(ok/resp*100)+'% de acertos':'nenhuma respondida ainda'}</span></div>
      <div class="row">${f.tema?(p.questoes?'<span class="pill ok">Passo 2 concluído</span>':`<button class="btn primary sm" data-q="step" ${resp?'':'disabled'}>${ic('check')}Concluir passo 2</button>`):''}<button class="btn sm" data-q="untema">Ver todas as questões</button>${day?`<button class="btn sm ghost" data-go="meta" data-p="${day.n}"${f.tema?` data-scroll="tema-${f.tema}"`:''}>${ic('chevL')}Voltar à meta</button>`:''}</div></div>${chips}</section>`})():'';
-  const dSel=`<select class="input" data-qf="d" aria-label="Disciplina" ${f.tema||f.temas?'disabled':''}><option value="">Todas as disciplinas (${QB.Q.length})</option>${DB.d.map((n,i)=>`<option value="${i}" ${String(i)===String(f.d)?'selected':''}>${esc(n)} (${DB.dcnt[i]})</option>`).join('')}</select>`;
-  const cSel=f.d===''||f.tema||f.temas?`<select class="input" disabled aria-label="Conteúdo"><option>${f.tema||f.temas?'Filtrado pelo conteúdo estudado':'Escolha a disciplina'}</option></select>`:`<select class="input" data-qf="c" aria-label="Conteúdo"><option value="">Todos os conteúdos</option>${DB.t.map((t,ti)=>t[0]===+f.d?`<option value="t${ti}" ${f.c==='t'+ti?'selected':''}>${t[1]}. ${esc(t[2])} (${DB.cnt[ti]})</option>`+DB.s.map((s,si)=>s[0]===ti?`<option value="s${si}" ${f.c==='s'+si?'selected':''}>&nbsp;&nbsp;&nbsp;${s[1]} ${esc(s[2])} (${DB.scnt[si]})</option>`:'').join(''):'').join('')}</select>`;
+  const dSel=`<select class="input" data-qf="d" aria-label="Disciplina" ${f.tema||f.temas||f.rev?'disabled':''}><option value="">Todas as disciplinas (${QB.Q.length})</option>${DB.d.map((n,i)=>`<option value="${i}" ${String(i)===String(f.d)?'selected':''}>${esc(n)} (${DB.dcnt[i]})</option>`).join('')}</select>`;
+  const cSel=f.d===''||f.tema||f.temas||f.rev?`<select class="input" disabled aria-label="Conteúdo"><option>${f.tema||f.temas?'Filtrado pelo conteúdo estudado':'Escolha a disciplina'}</option></select>`:`<select class="input" data-qf="c" aria-label="Conteúdo"><option value="">Todos os conteúdos</option>${DB.t.map((t,ti)=>t[0]===+f.d?`<option value="t${ti}" ${f.c==='t'+ti?'selected':''}>${t[1]}. ${esc(t[2])} (${DB.cnt[ti]})</option>`+DB.s.map((s,si)=>s[0]===ti?`<option value="s${si}" ${f.c==='s'+si?'selected':''}>&nbsp;&nbsp;&nbsp;${s[1]} ${esc(s[2])} (${DB.scnt[si]})</option>`:'').join(''):'').join('')}</select>`;
   const slice=QB.list.slice(QB.pos,QB.pos+f.per);
-  return `${head}${temaBox}
+  return `${head}${revBox}${temaBox}
   <section class="card qfilters"><div class="qf-grid">${dSel}${cSel}<input class="input" type="search" data-qf="term" placeholder="Buscar no enunciado" value="${esc(f.term)}" aria-label="Buscar no enunciado"></div>
    <div class="row" style="justify-content:space-between"><div class="row">${UI.chips('qstatus',[{k:'all',label:'Todas'},{k:'new',label:'Não resolvidas'},{k:'ok',label:'Acertadas'},{k:'err',label:'Erradas'}],new Set([f.status]))}<span class="muted small">|</span>${UI.chips('qorder',[{k:'book',label:'Ordem do livro'},{k:'rand',label:'Aleatória'}],new Set([f.order]))}</div>
    <div class="row"><span class="muted small">Fonte</span><button class="icon-btn" style="width:34px;height:34px" data-q="font" data-d="-1" aria-label="Diminuir fonte">A−</button><button class="icon-btn" style="width:34px;height:34px" data-q="font" data-d="0" aria-label="Tamanho padrão">A</button><button class="icon-btn" style="width:34px;height:34px" data-q="font" data-d="1" aria-label="Aumentar fonte">A+</button>
@@ -1291,9 +1298,11 @@ function qHandle(b){
   if(act==='font'){const d=+b.dataset.d;S.qf.font=d===0?0:Math.max(-2,Math.min(4,S.qf.font+d));return rerender()}
   if(act==='nav'){QB.pos=Math.max(0,QB.pos+(+b.dataset.d)*S.qf.per);if(S.qf.status!=='all'){const cur=QB.list[QB.pos];qBuild(cur&&cur.id)}rerender();const m=$('#main');if(m)window.scrollTo(0,0);return}
   if(act==='day'){return qOpenDay(+b.dataset.n)}
+  if(act==='rev'){return qOpenRev(b.dataset.t)}
+  if(act==='revdone'){const id=S.qf.rev;if(id&&!isDone(id)){S.progress.tasks[id]=todayStr();Store.save('progress',S.progress)}toast('Revisão semanal concluída!');return rerender()}
   if(act==='tema'){return qOpenTema(b.dataset.t)}
   if(act==='ctx'){const t=b.dataset.t;S.qf.tema=t==='all'?null:t;S.qf.cur=null;qBuild();return rerender()}
-  if(act==='untema'){S.qf.tema=null;S.qf.temas=null;S.qf.day=null;S.qf.touched=true;const d=QB.db?S.qf.d:'';qBuild();return rerender()}
+  if(act==='untema'){S.qf.rev=null;S.qf.tema=null;S.qf.temas=null;S.qf.day=null;S.qf.touched=true;const d=QB.db?S.qf.d:'';qBuild();return rerender()}
   if(act==='step'){setPasso(S.qf.tema,'questoes',true);toast('Passo 2 concluído.');return rerender()}
 }
 const dayTemas=d=>d?d.tasks.filter(x=>x.type==='teoria').map(x=>x.topic):[];
@@ -1302,6 +1311,19 @@ function qStudyDay(){const td=todayStr();const days=S.plan.days.filter(d=>dayTem
 function qSetDay(d,tid){S.qf.day=d?d.n:null;S.qf.temas=d?dayTemas(d):null;S.qf.tema=tid||null;S.qf.status='all';S.qf.term='';S.qf.cur=null;S.qf.touched=true;QB.built=false}
 function qOpenTema(tid){const d=S.plan.days.find(x=>dayTemas(x).includes(tid));qSetDay(d,tid);go('questoes')}
 function qOpenDay(n){const d=S.plan.days[n-1];qSetDay(d,null);go('questoes')}
+const findTask=id=>{for(const d of S.plan.days){const t=d.tasks.find(x=>x.id===id);if(t)return {t,d}}return null};
+function revInfo(id){const ids=(S.qs.rev||{})[id];if(!ids)return '';const n=ids.filter(i=>S.qs.ans[i]!==undefined).length;return ` · ${n}/${ids.length}`}
+function qMakeRev(t){
+  const seedStr=t.id;let seed=0;for(const c of seedStr)seed=(seed*31+c.charCodeAt(0))|0;const rnd=qRng(seed);
+  const rank=q=>{const s=qStatus(q);return s==='err'?0:s==='new'?1:2};
+  const pools=t.topics.map(tid=>{const l=QB.Q.filter(q=>qMatchTema(q,tid));for(let i=l.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[l[i],l[j]]=[l[j],l[i]]}return l.sort((a,b)=>rank(a)-rank(b))}).filter(l=>l.length);
+  const out=[],seen=new Set();let k=0;
+  while(out.length<50&&pools.some(l=>l.length)){const l=pools[k%pools.length];k++;while(l.length){const q=l.shift();if(!seen.has(q.id)){seen.add(q.id);out.push(q.id);break}}}
+  for(let i=out.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[out[i],out[j]]=[out[j],out[i]]}
+  return out}
+async function qOpenRev(id){const f=findTask(id);if(!f)return;if(!QB.db){toast('Carregando o banco de questões…');try{await qLoad()}catch(e){return toast('Não consegui abrir o banco de questões.')}}
+  S.qs.rev=S.qs.rev||{};if(!S.qs.rev[id]){S.qs.rev[id]=qMakeRev(f.t);qSave()}
+  S.qf.rev=id;S.qf.tema=null;S.qf.temas=null;S.qf.day=f.d.n;S.qf.status='all';S.qf.term='';S.qf.cur=null;S.qf.touched=true;QB.built=false;go('questoes')}
 
 const ROUTES={inicio:vInicio,cronograma:vCrono,meta:vMeta,aulas:vAulas,curso:vCurso,aula:vAula,gestao:vGestao,config:vConfig,
   questoes:vQuestoes,materiais:vMateriais,simulados:()=>soonView('simulados'),desempenho:vDesempenho,caderno:()=>soonView('caderno'),comunidade:()=>soonView('comunidade')};
