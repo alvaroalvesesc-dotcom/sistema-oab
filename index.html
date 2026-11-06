@@ -601,7 +601,9 @@ const ALUNOS=[
  /* login = nome de acesso (sem acento, maiúsculas). Para trocar um login, altere só o campo login; o slug guarda os dados e não muda. */
  {slug:'alvaro-da-silva-alves',login:'ALVARO ALVES',nome:'ALVARO ALVES',apelido:'ALVARO'},
  {slug:'maria-leticia-gouveia-mota',login:'LETICIA GOUVEIA',nome:'LETICIA GOUVEIA',apelido:'LETICIA'},
- {slug:'antonia-naiara-de-paula-silva',login:'NAIARA PAULA',nome:'NAIARA PAULA',apelido:'NAIARA'}];
+ {slug:'antonia-naiara-de-paula-silva',login:'NAIARA PAULA',nome:'NAIARA PAULA',apelido:'NAIARA'},
+ {slug:'lourival-saldanha',login:'LOURIVAL SALDANHA',nome:'LOURIVAL SALDANHA',apelido:'LOURIVAL',hash:'kgcsqua8r7'}];
+ /* hash = senha própria do aluno (cyrb53); sem hash, vale a senha padrão SENHA_HASH. */
 const SENHA_HASH='6wpn7rzvxm';
 const normNome=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z\s]/g,' ').trim().replace(/\s+/g,'-');
 const cyrb53=(str,seed=7)=>{let h1=0xdeadbeef^seed,h2=0x41c6ce57^seed;for(let i=0,ch;i<str.length;i++){ch=str.charCodeAt(i);h1=Math.imul(h1^ch,2654435761);h2=Math.imul(h2^ch,1597334677)}h1=Math.imul(h1^(h1>>>16),2246822507);h1^=Math.imul(h2^(h2>>>13),3266489909);h2=Math.imul(h2^(h2>>>16),2246822507);h2^=Math.imul(h1^(h1>>>13),3266489909);return (4294967296*(2097151&h2)+(h1>>>0)).toString(36)};
@@ -1488,7 +1490,7 @@ function renderGate(state){
   f.addEventListener('submit',e=>{e.preventDefault();const err=$('#lerr');
     const nome=$('#lname').value,senha=$('#lpass').value.trim().toUpperCase();
     const al=ALUNOS.find(x=>normNome(x.login)===normNome(nome));
-    if(!al||cyrb53(senha)!==SENHA_HASH){err.textContent='Login ou senha incorretos. Confira o login e a senha.';err.hidden=false;$('#lpass').value='';$('#lpass').focus();return}
+    if(!al||cyrb53(senha)!==(al.hash||SENHA_HASH)){err.textContent='Login ou senha incorretos. Confira o login e a senha.';err.hidden=false;$('#lpass').value='';$('#lpass').focus();return}
     lsSet('sistemaoab:last',nome.trim().toUpperCase());lsSet('sistemaoab:sessao',al.slug);entrar(al)});
 }
 function entrar(al){S.aluno=al;S.isAdmin=!!(S.claudeAdmin&&al.slug==='alvaro-da-silva-alves');Store.localKey='sistemaoab:'+al.slug;loadAndGo()}
